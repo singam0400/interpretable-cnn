@@ -9,6 +9,40 @@ import cv2
 from models.resnet_custom import get_resnet18
 from utils.gradcam import GradCAM
 from utils.data_loader import get_cifar10_loaders
+from sklearn.metrics import accuracy_score, f1_score
+
+def evaluate_model():
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+    # Load model
+    model = get_resnet18(num_classes=10)
+    model.load_state_dict(torch.load("model.pth", map_location=device))
+    model.to(device)
+    model.eval()
+
+    _, testloader, class_names = get_cifar10_loaders(batch_size=64)
+
+    all_preds = []
+    all_labels = []
+
+    with torch.no_grad():
+        for images, labels in testloader:
+            images = images.to(device)
+            labels = labels.to(device)
+
+            outputs = model(images)
+            preds = torch.argmax(outputs, dim=1)
+
+            all_preds.extend(preds.cpu().numpy())
+            all_labels.extend(labels.cpu().numpy())
+
+    acc = accuracy_score(all_labels, all_preds)
+    f1 = f1_score(all_labels, all_preds, average='macro')
+
+    print(f"\n Evaluation Metrics:")
+    print(f"Accuracy: {acc:.4f}")
+    print(f"F1 Score (macro): {f1:.4f}")
+
 
 def apply_gradcam():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -48,3 +82,4 @@ def apply_gradcam():
 
 if __name__ == "__main__":
     apply_gradcam()
+    evaluate_model()
